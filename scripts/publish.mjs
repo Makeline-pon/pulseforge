@@ -117,6 +117,58 @@ export function renderChangelogEntry(version, date, items) {
 
 const CORE_FILE = join('src', 'client', '10-core.ts')
 const CHANGELOG_ANCHOR = 'const CHANGELOG: ChangelogEntry[] = [\n'
+const CHANGELOG_FILE = 'CHANGELOG.md'
+
+/** 类型的中文标签：Markdown 里用粗体标注，与面板弹窗的彩色角标一一对应。 */
+const CHANGELOG_KIND_LABEL = { feat: '新增', fix: '修复', chore: '杂项' }
+
+/** `CHANGELOG.md` 的固定文件头（首次生成时使用，之后原样保留）。 */
+export const CHANGELOG_HEADER = [
+  '# 更新日志',
+  '',
+  '按版本号倒序排列，最新版本在最上方。每个版本的条目与插件面板里「更新日志」弹窗、GitHub Release 说明同源。',
+  '',
+  '格式：每个版本一个二级标题，条目行首标注类型（**新增** / **修复** / **杂项**）。发布时由 `scripts/publish.mjs` 自动在下方插入新条目，请勿手工调整顺序。',
+  '',
+].join('\n')
+
+/** 把一个版本渲染成 `CHANGELOG.md` 里的一段（标题 + 条目 + 结尾空行）。 */
+export function renderChangelogMarkdown(version, date, items) {
+  const lines = ['## ' + version + ' — ' + date, '']
+  for (const item of items) {
+    const label = CHANGELOG_KIND_LABEL[item.kind] || item.kind
+    lines.push('- **' + label + '** ' + String(item.text).replace(/\r?\n/g, ' '))
+  }
+  lines.push('')
+  return lines.join('\n') + '\n'
+}
+
+/**
+ * 把新版本插到 `CHANGELOG.md` 的最上方（文件头之后）。
+ *
+ * 与 `applyToCore` 同样的思路：只做「头部 + 插入 + 原文」，不重新排版既有内容，
+ * 用户手写的补充说明不会被覆盖。文件不存在时按标准头初始化。
+ */
+export function applyToChangelog(source, version, date, items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('更新日志至少要有一条内容')
+  }
+  const entry = renderChangelogMarkdown(version, date, items)
+  const text = typeof source === 'string' && source.trim().length > 0 ? source.replace(/\r\n/g, '\n') : CHANGELOG_HEADER
+
+  if (/^##\s+/m.test(text)) {
+    // 已有历史条目：插在第一个版本标题之前
+    const at = text.search(/^##\s+/m)
+    return text.slice(0, at) + entry + '\n' + text.slice(at)
+  }
+  // 只有文件头：直接接在后面
+  return text.replace(/\n*$/, '\n\n') + entry
+}
+
+/** 从 `CHANGELOG.md` 里读出出现过的版本号（用于校验倒序与查重）。 */
+export function changelogVersions(source) {
+  return Array.from(String(source).matchAll(/^##\s+v?([0-9][0-9A-Za-z.+-]*)/gm)).map((match) => match[1])
+}
 
 /**
  * 把版本号与更新日志写进 `10-core.ts` 的源码文本。
@@ -188,6 +240,9 @@ PulseForge 一键发布
   --dry-run               只校验并打印计划，不改文件、不提交
   --no-push               提交并打标签，但不推送
   --no-test               跳过测试（不推荐）
+
+  每次发布会自动改动：package.json、src/client/10-core.ts、
+  CHANGELOG.md（新版本插到最上方），并跑测试把版本同步进 Tauri 与 sw.js。
 `
 
 function print(line = '') {
@@ -331,6 +386,7 @@ async function main() {
   print('  标题    ' + subject)
   print('  日志    ' + items.length + ' 条')
   for (const item of items) print('          [' + item.kind + '] ' + item.text)
+  print('  文档    ' + CHANGELOG_FILE + '（新条目插到最上方）')
   print('  测试    ' + (options.test ? 'npm run test:all' : '跳过（--no-test）'))
   print('  推送    ' + (options.push ? options.remote + '（分支 + 标签）' : '跳过（--no-push）'))
   print('')
@@ -342,9 +398,11 @@ async function main() {
 
   // 4) 改文件。先备份，任何失败都原样写回
   const backup = new Map()
+  const changelogPath = join(root, CHANGELOG_FILE)
   const touched = [
     pkgPath,
     join(root, CORE_FILE),
+    changelogPath,
     join(root, 'src-tauri', 'tauri.conf.json'),
     join(root, 'src-tauri', 'Cargo.toml'),
   ]
@@ -370,7 +428,12 @@ async function main() {
     const corePath = join(root, CORE_FILE)
     const coreSource = readFileSync(corePath, 'utf8')
     writeFileSync(corePath, applyToCore(coreSource, version, date, items), 'utf8')
-    print('  ✓ package.json 与 10-core.ts 已更新')
+
+    // 根目录的 CHANGELOG.md 与面板内的更新日志同源，一起追加（新版本在最上方）
+    const previousChangelog = existsSync(changelogPath) ? readFileSync(changelogPath, 'utf8') : ''
+    const nextChangelog = applyToChangelog(previousChangelog, version, date, items)
+    writeFileSync(changelogPath, nextChangelog, 'utf8')
+    print('  ✓ package.json、10-core.ts 与 ' + CHANGELOG_FILE + ' 已更新')
 
     // 5) 测试：test:all 内部会重建产物，并把版本同步进 tauri.conf.json、Cargo.toml、sw.js
     if (options.test) {

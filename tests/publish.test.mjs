@@ -19,6 +19,10 @@ import {
   renderChangelogEntry,
   applyToCore,
   splitMessage,
+  renderChangelogMarkdown,
+  applyToChangelog,
+  changelogVersions,
+  CHANGELOG_HEADER,
 } from '../scripts/publish.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -164,6 +168,53 @@ check('npm 脚本与 README 都指向一键发布入口', function () {
   const readme = readFileSync(join(root, 'README.md'), 'utf8')
   assert.ok(readme.includes('git_push.bat'), 'README 应说明一键发布怎么用')
   assert.ok(readme.includes('--dry-run'), 'README 应提到试运行开关')
+})
+
+check('CHANGELOG.md 条目按类型渲染成粗体标签', function () {
+  const text = renderChangelogMarkdown('1.2.0', '2026-11-11', [
+    { kind: 'feat', text: '新增导出进度' },
+    { kind: 'fix', text: '修复\n换行被截断' },
+    { kind: 'chore', text: '整理脚本' },
+  ])
+  const lines = text.split('\n')
+  assert.equal(lines[0], '## 1.2.0 — 2026-11-11')
+  assert.equal(lines[1], '')
+  assert.ok(text.includes('- **新增** 新增导出进度'))
+  assert.ok(text.includes('- **修复** 修复 换行被截断'), '正文里的换行应压成空格，避免破坏列表项')
+  assert.ok(text.includes('- **杂项** 整理脚本'))
+  assert.ok(text.endsWith('\n\n'), '每个条目块以空行结尾，便于相邻拼接')
+})
+
+check('新版本插到 CHANGELOG.md 最上方', function () {
+  const first = applyToChangelog(CHANGELOG_HEADER, '1.1.0', '2026-11-10', [{ kind: 'feat', text: '第一版' }])
+  const second = applyToChangelog(first, '1.2.0', '2026-11-11', [{ kind: 'fix', text: '第二版' }])
+  assert.deepEqual(changelogVersions(second), ['1.2.0', '1.1.0'], '文件里必须按版本倒序排列')
+  assert.ok(second.startsWith('# 更新日志'), '文件头应保留')
+  const firstHeading = second.search(/^##\s+/m)
+  assert.ok(second.indexOf('## 1.2.0') === firstHeading, '最新版本必须是第一个二级标题')
+})
+
+check('CHANGELOG.md 为空时按标准头初始化', function () {
+  const text = applyToChangelog('', '2.0.0', '2026-12-01', [{ kind: 'feat', text: '首个条目' }])
+  assert.ok(text.startsWith(CHANGELOG_HEADER.trimEnd()), '空文件应补上标准头')
+  assert.equal(changelogVersions(text)[0], '2.0.0')
+  assert.throws(() => applyToChangelog(CHANGELOG_HEADER, '2.0.1', '2026-12-02', []), /至少/)
+})
+
+check('仓库根目录的 CHANGELOG.md 覆盖当前版本且倒序', function () {
+  const path = join(root, 'CHANGELOG.md')
+  assert.ok(existsSync(path), '缺少 CHANGELOG.md')
+  const text = readFileSync(path, 'utf8')
+  const versions = changelogVersions(text)
+  assert.ok(versions.length >= 5, 'CHANGELOG.md 应保留完整历史')
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  assert.equal(versions[0], pkg.version, '第一条必须等于 package.json 的版本')
+  for (let i = 1; i < versions.length; i += 1) {
+    const newer = parseVersion(versions[i - 1])
+    const older = parseVersion(versions[i])
+    assert.ok(compareVersions(newer, older) > 0, '版本必须严格倒序：' + versions[i - 1] + ' / ' + versions[i])
+  }
+  assert.ok(text.includes('- **新增**') && text.includes('- **修复**'), '条目应带中文类型标签')
 })
 
 console.log('publish ok：' + passed + ' 组校验通过（版本 / 日志 / 源码改写 / 入口脚本）')

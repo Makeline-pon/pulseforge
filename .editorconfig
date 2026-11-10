@@ -1,0 +1,38 @@
+# 编辑器统一约定（VS Code / JetBrains / Sublime / Vim 均原生支持）
+# 缩进与换行只在这里定义一次，避免不同编辑器保存出混合风格。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+
+# Markdown：行尾两个空格是换行语法，不能裁掉
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# 批处理必须是 CRLF，否则 cmd 解析可能出错
+[*.bat]
+end_of_line = crlf
+indent_style = tab
+indent_size = 2
+
+# Windows 专有文件
+[*.{ps1,cmd}]
+end_of_line = crlf
+
+# 配置文件用 2 空格，Cargo 用 4 空格
+[*.rs]
+indent_size = 4
+[*.toml]
+indent_size = 2
+
+# 生成物与二进制不参与格式约定
+[*.{png,ico,zip,wav}]
+insert_final_newline = false
+trim_trailing_whitespace = false

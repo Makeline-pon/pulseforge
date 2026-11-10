@@ -1,6 +1,7 @@
 @echo off
 rem PulseForge one-key release.
 rem Usage: just double-click, or: git_push.bat --version 0.8.0 --message "feat: xxx"
+rem Every release prepends its changelog to CHANGELOG.md (newest first).
 chcp 65001 >nul
 setlocal EnableExtensions
 cd /d "%~dp0"
@@ -24,6 +25,7 @@ echo   ------------------------------------------------------------
 echo   Interactive: press Enter and follow the prompts.
 echo   Shortcut   : git_push.bat --version 0.8.0 --message "feat: xxx"
 echo   Dry run    : git_push.bat --dry-run
+echo   Changelog  : entries are prepended to CHANGELOG.md automatically.
 echo.
 
 node "%~dp0scripts\publish.mjs" %*

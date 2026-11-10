@@ -132,6 +132,8 @@ __pfLogAudioStats('现场')    // 直接打印一行中文统计
 
 需要 Node 20+。Windows 安装包还需要 [Rust](https://rustup.rs)（MSVC 工具链）与 Visual Studio Build Tools 的「使用 C++ 的桌面开发」组件。
 
+缩进与换行由根目录 `.editorconfig` 统一：源码 2 空格 + LF，`.bat` 强制 CRLF，Markdown 保留行尾空格。VS Code / JetBrains 均原生支持，无需装插件。
+
 ```bash
 npm install
 
@@ -151,7 +153,7 @@ npm run tauri build     # 编译 Windows 安装包（需 Rust + Tauri CLI）
 1. **版本号** —— 直接回车就用「补丁位 +1」；
 2. **提交说明** —— 写成多行，每行都会变成面板里「更新日志」弹窗的一条记录，行首可写 `feat:` / `fix:` / `chore:` 决定彩色角标。
 
-脚本会依次：改 `package.json` 与 `src/client/10-core.ts`（版本号 + 更新日志）→ 跑 `npm run test:all`（顺带重建产物、把版本同步进 Tauri 与 Service Worker）→ `git commit` → 打标签 `v<版本>` → 推送分支与标签。任何一步失败都会把改过的文件恢复原样，不会留下「改了版本却没发布」的半成品。
+脚本会依次：改 `package.json` 与 `src/client/10-core.ts`（版本号 + 更新日志）→ 把同一批条目按版本倒序插进根目录的 `CHANGELOG.md` → 跑 `npm run test:all`（顺带重建产物、把版本同步进 Tauri 与 Service Worker）→ `git commit` → 打标签 `v<版本>` → 推送分支与标签。任何一步失败都会把改过的文件恢复原样，不会留下「改了版本却没发布」的半成品。
 
 | 附加参数 | 作用 |
 | --- | --- |
@@ -195,6 +197,9 @@ git push -u origin main
 ```
 pulseforge/
 ├── index.ts                     DSH 宿主半部（注册 pulseforge_set_bpm 工具）
+├── package.json                 版本单一来源（1.0.0）、脚本、依赖
+├── CHANGELOG.md                 更新日志（按版本倒序，发布脚本自动追加）
+├── .editorconfig               缩进 / 换行 / 编码约定
 ├── git_push.bat                 一键发布入口（双击 = 改版本 + 测试 + 提交 + 打标签 + 推送）
 ├── src/client/                  DSH 前端半部，按依赖顺序拼成 client.js
 │   ├── 10-core.ts               纯函数：吸附、音高、效果器解析、工程归一化
