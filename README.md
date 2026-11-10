@@ -4,12 +4,11 @@
 One shared core ships in three shapes: a **DSH Desktop plugin**, an **installable PWA**, and a **Windows desktop app (Tauri)**.
 
 <p align="center">
-  <img src="pwa/icon-512.png" width="120" alt="PulseForge icon" />
+  <img src="docs/icon.png" width="120" alt="PulseForge icon" />
 </p>
 
-> Screenshot placeholder: save an app screenshot as `docs/screenshot.png`, then uncomment the next line.
->
-> <!-- ![PulseForge main window](docs/screenshot.png) -->
+<!-- Screenshot placeholder: save an app screenshot as docs/screenshot.png, then uncomment the next line. -->
+<!-- ![PulseForge main window](docs/screenshot.png) -->
 
 ---
 

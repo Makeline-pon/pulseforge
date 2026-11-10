@@ -49,6 +49,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { kind: 'feat', text: '正式版：音序器、钢琴卷帘、三层效果器、WAV 导出与三种分发形态（DSH 插件 / PWA / 桌面安装包）' },
       { kind: 'fix', text: '宿主半部改用本地结构类型声明，包内不再声明 cordis / schemastery 依赖，CI 安装不再失败' },
       { kind: 'chore', text: 'README 改为纯英文，面向国际用户与 GitHub 首发' },
+      { kind: 'fix', text: 'README 顶部图标改用仓库内的 docs/icon.png，不再指向构建产物导致线上 404' },
     ],
   },
   {

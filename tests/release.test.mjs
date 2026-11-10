@@ -328,4 +328,20 @@ check('README 具备开源项目门面要素', function () {
   assert.ok(readme.includes('installer-hooks.nsh'), '需要指出安装向导钩子位置')
 })
 
+// GitHub 只渲染仓库里真实存在的文件：README 顶部的图标曾指向 pwa/icon-512.png，
+// 而 pwa/ 是构建产物且被 .gitignore 排除，结果线上显示成一个破图。
+check('README 引用的本地图片都在仓库里', function () {
+  const raw = read(join(root, 'README.md'))
+  const readme = raw.replace(/<!--[\s\S]*?-->/g, '')
+  const sources = []
+  for (const match of readme.matchAll(/<img[^>]+src="([^"]+)"/g)) sources.push(match[1])
+  for (const match of readme.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) sources.push(match[1])
+  assert.ok(sources.length > 0, 'README 至少应引用一个图片')
+  for (const source of sources) {
+    assert.equal(/^https?:/.test(source), false, 'README 图片应放在仓库内：' + source)
+    assert.equal(source.startsWith('pwa/'), false, 'README 不能引用构建产物目录 pwa/：' + source)
+    assert.ok(existsSync(join(root, source)), 'README 图片缺失：' + source)
+  }
+})
+
 console.log('release ok：' + passed + ' 组校验通过（插件 / PWA / Tauri / 版本联动）')
