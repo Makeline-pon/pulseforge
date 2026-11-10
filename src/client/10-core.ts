@@ -47,6 +47,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { kind: 'fix', text: '框选在网格外松手不再丢失选区：命中判定改用按下瞬间量出的格子几何，指针坐标越界时夹到最近的格子' },
       { kind: 'fix', text: '钢琴卷帘框选同样以记录下来的起止坐标算包围盒，拖出面板外再松手也能选中' },
       { kind: 'feat', text: '正式版：音序器、钢琴卷帘、三层效果器、WAV 导出与三种分发形态（DSH 插件 / PWA / 桌面安装包）' },
+      { kind: 'fix', text: '宿主半部改用本地结构类型声明，包内不再声明 cordis / schemastery 依赖，CI 安装不再失败' },
     ],
   },
   {

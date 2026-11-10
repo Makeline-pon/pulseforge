@@ -128,6 +128,20 @@ assert.equal(blocks.length, 1, 'render 返回一个内容块')
 assert.equal(blocks[0].type, 'text', '内容块类型为 text')
 assert.ok(blocks[0].text.includes('200'), 'render 文本包含归一化后的 BPM')
 
+// 依赖纯净性：cordis / schemastery 由宿主提供，不能写进 dependencies，
+// 否则干净环境执行 npm install 会 `No matching version found for cordis@^4.1.0`。
+const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+const runtimeDeps = Object.keys(manifest.dependencies || {})
+assert.equal(runtimeDeps.includes('cordis'), false, 'dependencies 不得包含 cordis')
+assert.equal(runtimeDeps.includes('schemastery'), false, 'dependencies 不得包含 schemastery')
+assert.equal(runtimeDeps.length, 0, '运行时不应有 npm 依赖（全部由宿主提供）')
+
+const hostSource = readFileSync(join(root, 'index.ts'), 'utf8')
+assert.equal(/from\s+'cordis'/.test(hostSource), false, "index.ts 不得从 'cordis' 导入")
+assert.equal(/from\s+'schemastery'/.test(hostSource), false, "index.ts 不得从 'schemastery' 导入")
+const indexSource = readFileSync(join(root, 'index.js'), 'utf8')
+assert.equal(/^\s*import\s[^\n]*from\s+'(?!\.)/m.test(indexSource), false, 'index.js 产物不得有裸模块 import')
+
 effects.forEach(function (disposer) {
   if (typeof disposer === 'function') disposer()
 })

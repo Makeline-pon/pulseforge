@@ -9,8 +9,6 @@
  *    让调用方知道应当引导用户到面板里操作。
  */
 
-import type { Context } from 'cordis'
-
 /** JSON Schema 子集：与宿主 `JsonSchemaNode` 支持的键完全一致（无 minimum/maximum）。 */
 interface JsonSchemaNode {
   type?: 'object' | 'array' | 'string' | 'number' | 'integer' | 'boolean' | 'null'
@@ -58,6 +56,28 @@ interface LoggerLike {
   info(message: string, detail?: unknown): void
   warn(message: string, detail?: unknown): void
   error(message: string, detail?: unknown): void
+}
+
+/**
+ * 宿主 Cordis `Context` 的最小结构投影。
+ *
+ * 这里刻意**不从 `cordis` 包导入类型**：cordis 由 DSH 宿主在运行时提供，
+ * npm 上并不存在同名可安装包（DSH 自带的实现叫 `@deepseek-ai/cordis`），
+ * 一旦写进 `dependencies`，干净环境执行 `npm install` 就会
+ * `No matching version found for cordis@^4.1.0`。
+ *
+ * 插件只需要 ctx 上这几个成员，结构投影既够用又不引入安装依赖；
+ * 宿主传进来的真实 Context 结构兼容，运行时无任何差别。
+ */
+interface Context {
+  /** 命名日志器；老宿主可能没有，调用前用 typeof 判断。 */
+  logger?(name: string): LoggerLike
+  /** 声明服务依赖并建立子作用域；依赖就绪后才执行回调。 */
+  inject(deps: string[], callback: (scoped: Context) => void): unknown
+  /** 副作用注册：返回的清理函数在插件卸载时被宿主调用。 */
+  effect(fn: () => unknown): unknown
+  /** 工具服务；未安装 tools 服务的宿主上为 undefined。 */
+  tools?: ToolsHost
 }
 
 /** 插件名：与包名、命令名、IndexedDB 库名保持一致。 */
@@ -130,14 +150,13 @@ function normalizeBpm(raw: unknown): { ok: boolean; bpm: number; clamped: boolea
 export function apply(ctx: Context): void {
   let logger: LoggerLike | null = null
   try {
-    logger = (ctx as unknown as { logger(name: string): LoggerLike }).logger('pulseforge')
+    if (typeof ctx.logger === 'function') logger = ctx.logger('pulseforge')
   } catch (error) {
     console.warn('[pulseforge] 宿主未提供 logger，退回 console', error)
   }
 
   ctx.inject(['tools'], function (scoped: Context) {
-    const host = scoped as unknown as { tools?: ToolsHost }
-    const tools = host.tools
+    const tools = scoped.tools
     if (tools === undefined) {
       // 老版本宿主可能没有工具服务；面板与命令由客户端半部独立注册
       if (logger !== null) logger.warn('宿主未提供 tools 服务，跳过 pulseforge_set_bpm 注册')

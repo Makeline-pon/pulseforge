@@ -251,6 +251,9 @@ pulseforge/
 **为什么 PWA 不直接用 React？**
 为了零依赖单文件分发（也避免在没有网络的机器上装不上），`src/pwa/react-lite.ts` 实现了本项目用到的 React 子集：`createElement` 与六个 hook。副作用是它不支持 `class` 组件、Context 与 JSX。
 
+**`npm install` 需要装 cordis 吗？**
+不需要。cordis 与 schemastery 由 DSH 宿主在运行时提供，npm 上也没有可安装的 `cordis` 同名包（DSH 自带的是 `@deepseek-ai/cordis`）。所以本包的 `dependencies` 为空，宿主半部用本地结构类型描述 `Context`，干净环境 `npm install` 只装开发期工具链。
+
 **长时间播放内存会涨吗？**
 不会无限涨。每个 voice 结束时断开全部节点，延迟回调集中登记并在停止/卸载时清空，渲染器每轮渲染后还会丢掉已经不在树上的 DOM 引用。怀疑有泄漏时，在控制台调用 `__pfAudioStats()` 看 `voices` 与 `timers` 是否回落即可。
 
