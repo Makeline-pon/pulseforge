@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "title": "PulseForge",
+    "description": "An original electronic music editor: 16-track sequencer, piano roll, pure Web Audio synths, a four-stage FX chain and WAV export."
+  },
+  "commands": {
+    "pulseforge": "Open the electronic music editor",
+    "daw": "Alias of the PulseForge command"
+  },
+  "tools": {
+    "set_bpm": "Set the PulseForge project tempo (60-200)"
+  }
+}

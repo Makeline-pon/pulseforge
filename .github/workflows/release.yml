@@ -1,0 +1,128 @@
+# PulseForge 发布流水线
+#
+# 触发方式：
+#   1. 推送形如 v1.0.0 的标签 —— 完整跑测试、构建三端产物、打 Tauri 安装包、发 GitHub Release；
+#   2. 手动 workflow_dispatch —— 只想验证流水线时用，不会发布（publish job 被条件挡住）。
+#
+# 产物命名（由 scripts/lib/release-bundle.mjs 统一决定）：
+#   release/PulseForge-Setup-v<version>.exe     Tauri 生成的 NSIS 安装程序
+#   release/PulseForge-v<version>-source.zip    源码包（排除依赖、构建产物与 Git 元数据）
+#   release/SHA256SUMS.txt                      校验清单
+#   release/release-manifest.json               机器可读的产物描述
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# 同一标签重复推送时取消旧运行，避免两个 job 抢着创建同一个 Release
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # npm 日志更安静，失败信息已经足够
+  npm_config_fund: 'false'
+  npm_config_audit: 'false'
+
+jobs:
+  build:
+    name: 测试 · 构建 · 安装包
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 仓库没有提交 package-lock.json，所以用 npm install 而不是 npm ci
+      - name: 安装依赖
+        run: npm install --no-audit --no-fund
+
+      - name: 读取版本并校验标签
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          Write-Host "package.json version = $version"
+          "value=$version" >> $env:GITHUB_OUTPUT
+          if ("${{ github.event_name }}" -eq "push") {
+            if ("${{ github.ref_name }}" -ne "v$version") {
+              Write-Error "标签 ${{ github.ref_name }} 与 package.json 版本 v$version 不一致，请先同步版本号"
+              exit 1
+            }
+          }
+
+      # test:all 内部会先重建 client.js / pwa/app.js，
+      # 所以干净检出也能一次跑完 core / smoke / stress / dist / pwa / release / installer
+      - name: 运行全部测试
+        run: npm run test:all
+
+      - name: 构建插件产物与 PWA 产物
+        run: npm run build:release
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Rust 依赖
+        uses: swatinem/rust-cache@v2
+        with:
+          # Cargo.toml 在 src-tauri 下，缓存要针对这个目录
+          workspaces: src-tauri
+
+      # Tauri CLI 由 scripts/tauri.mjs 转发：它会先重建 dist-pwa 保证版本同步，
+      # 再调用 npx/cargo 里的 tauri build。NSIS 由 Tauri CLI 自行下载，无需预装。
+      - name: 编译 Tauri 安装包（NSIS）
+        run: npm run tauri build
+
+      # tauri build 之后安装器才存在，--require-installer 让「没有安装器」变成硬失败，
+      # 避免发布一个只有源码包的 Release
+      - name: 收集 release/ 分发包
+        run: npm run release:pack -- --require-installer
+
+      - name: 展示产物
+        shell: pwsh
+        run: Get-ChildItem release | Format-Table Name, Length
+
+      - name: 上传构建产物（排错用）
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulseforge-release-${{ steps.version.outputs.value }}
+          path: release/*
+          if-no-files-found: error
+
+      - name: 创建 GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PulseForge v${{ steps.version.outputs.value }}
+          tag_name: ${{ github.ref_name }}
+          files: release/*
+          generate_release_notes: true
+          # 内测阶段：想让 Release 先落地为草稿，把下面改成 true
+          draft: false
+          prerelease: true
+          body: |
+            PulseForge v${{ steps.version.outputs.value }} 内测版。
+
+            ## 安装
+            1. 下载 `PulseForge-Setup-v${{ steps.version.outputs.value }}.exe`；
+            2. 双击运行，向导里可以改安装目录（默认 `C:\Program Files\PulseForge`）；
+            3. 已安装旧版时，向导会询问是否覆盖安装；检测到安装残缺会自动清理后重装。
+
+            ## 其他产物
+            - `PulseForge-v${{ steps.version.outputs.value }}-source.zip`：完整源码（含 DSH 插件、PWA、Tauri 工程），`npm install && npm run test:all` 可自验；
+            - `SHA256SUMS.txt`：安装包与源码包的 SHA-256 校验值。
+
+            ## 环境要求
+            Windows 10 1809+ / Windows 11，安装包会按需下载 WebView2 运行时。

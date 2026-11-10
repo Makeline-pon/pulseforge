@@ -1,0 +1,29 @@
+[package]
+name = "pulseforge"
+version = "1.0.0"
+description = "PulseForge 电子音乐编辑器桌面外壳"
+authors = ["PulseForge"]
+license = "MIT"
+repository = ""
+edition = "2021"
+rust-version = "1.77"
+
+# 桌面端只需要一个可执行文件；lib 形态留给未来的移动端复用。
+[lib]
+name = "pulseforge_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

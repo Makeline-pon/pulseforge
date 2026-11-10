@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "title": "PulseForge",
+    "description": "原创电子音乐编辑器：16 轨音序器、钢琴卷帘、纯 Web Audio 合成引擎、四路效果链与 WAV 导出。"
+  },
+  "commands": {
+    "pulseforge": "打开电子音乐编辑器",
+    "daw": "PulseForge 的别名命令"
+  },
+  "tools": {
+    "set_bpm": "设置 PulseForge 工程的 BPM（60–200）"
+  }
+}

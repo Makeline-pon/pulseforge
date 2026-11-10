@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PulseForge",
+  "version": "1.0.0",
+  "identifier": "dev.pulseforge.app",
+  "build": {
+    "beforeDevCommand": "npm run build:pwa",
+    "devUrl": "http://127.0.0.1:5180/",
+    "beforeBuildCommand": "npm run build:release",
+    "frontendDist": "../dist-pwa"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "PulseForge",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "resizable": true,
+        "center": true,
+        "theme": "Dark",
+        "backgroundColor": "#1b1b1d",
+        "additionalBrowserArgs": "-autoplay-policy=no-user-gesture-required"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob: data:; worker-src 'self' blob:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "PulseForge 电子音乐编辑器",
+    "longDescription": "16 轨音序器 + 钢琴卷帘 + 纯 Web Audio 合成引擎的桌面电子音乐编辑器，可离线运行。",
+    "resources": {
+      "resources/package.json": "package.json",
+      "resources/version.json": "version.json"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installerHooks": "installer-hooks.nsh",
+        "installMode": "perMachine",
+        "compression": "lzma",
+        "startMenuFolder": "PulseForge",
+        "displayLanguageSelector": true,
+        "languages": [
+          "SimpChinese",
+          "English"
+        ]
+      }
+    }
+  }
+}
