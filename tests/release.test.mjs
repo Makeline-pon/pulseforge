@@ -321,7 +321,7 @@ check('README 具备开源项目门面要素', function () {
   const readme = read(join(root, 'README.md'))
   assert.match(readme, /^# PulseForge/m)
   assert.ok(readme.includes('Releases'), '需要指向 GitHub Releases 的下载指引')
-  assert.ok(readme.includes('快捷键指南'))
+  assert.ok(readme.includes('Keyboard shortcuts'))
   assert.ok(readme.includes('npm run build:release'))
   assert.ok(readme.includes('MIT'))
   assert.ok(readme.includes('PulseForge-Setup-v'), '需要写清安装包文件名')
